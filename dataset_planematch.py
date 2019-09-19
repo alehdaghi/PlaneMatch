@@ -1,6 +1,6 @@
 import os
 import torch
-import pandas as pd
+
 from skimage import io, transform
 import numpy as np
 import torchvision
@@ -9,152 +9,149 @@ import math
 from cropextract import *
 from torch.utils.data import Dataset, DataLoader
 import scipy.misc as smi
+import imageio
 
 import scipy.io as sio
 import scipy.misc as smi
-
+import pickle
+from matplotlib import pyplot as plt
 
 class PlanarPatchDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
-        self.landmarks_frame = pd.read_csv(csv_file)
+        f = open(os.path.join(root_dir, 'train.pkl'), 'rb')
+        self.landmarks_frame = pickle.load(f)
         self.root_dir = root_dir
         self.transform = transform
 
     def __len__(self):
         return len(self.landmarks_frame)
+        #return 256
 
     def __getitem__(self, idx):
-        rgb_local_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 0])
-        rgb_global_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 1])
-        depth_local_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 2])
-        depth_global_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 3])
-        normal_local_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 4])
-        normal_global_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 5])
-        mask_local_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 6])
-        mask_global_name1 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 7])
 
-        rgb_local_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 8])
-        rgb_global_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 9])
-        depth_local_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 10])
-        depth_global_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 11])
-        normal_local_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 12])
-        normal_global_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 13])
-        mask_local_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 14])
-        mask_global_name2 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 15])
+        a = str(self.landmarks_frame[idx][1][0])
+        p = str(self.landmarks_frame[idx][1][1])
+        n = str(self.landmarks_frame[idx][1][2])
 
-        rgb_local_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 16])
-        rgb_global_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 17])
-        depth_local_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 18])
-        depth_global_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 19])
-        normal_local_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 20])
-        normal_global_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 21])
-        mask_local_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 22])
-        mask_global_name3 = os.path.join(self.root_dir,self.landmarks_frame.ix[idx, 23])
-        
-        rgb_local_image1 = smi.imread(rgb_local_name1)
-        rgb_global_image1 = smi.imread(rgb_global_name1)
-        depth_local_image1 = smi.imread(depth_local_name1)
-        depth_global_image1 = smi.imread(depth_global_name1)
-        normal_local_image1 = smi.imread(normal_local_name1)
-        normal_global_image1 = smi.imread(normal_global_name1)
-        mask_local_image1 = smi.imread(mask_local_name1)
-        mask_global_image1 = smi.imread(mask_global_name1)
+        rgb_anchor = os.path.join(self.root_dir, 'images/'+a+'.rgb.npy')
+        normal_anchor = os.path.join(self.root_dir, 'images/'+a+'.n.npy')
+        mask_anchor = os.path.join(self.root_dir, 'planes/' + self.landmarks_frame[idx][0][0]+'.npy')
 
-        rgb_local_image2 = smi.imread(rgb_local_name2)
-        rgb_global_image2 = smi.imread(rgb_global_name2)
-        depth_local_image2 = smi.imread(depth_local_name2)
-        depth_global_image2 = smi.imread(depth_global_name2)
-        normal_local_image2 = smi.imread(normal_local_name2)
-        normal_global_image2 = smi.imread(normal_global_name2)
-        mask_local_image2 = smi.imread(mask_local_name2)
-        mask_global_image2 = smi.imread(mask_global_name2)
+        rgb_positive = os.path.join(self.root_dir, 'images/'+ p + '.rgb.npy')
+        normal_positive = os.path.join(self.root_dir, 'images/'+ p + '.n.npy')
+        mask_positive = os.path.join(self.root_dir, 'planes/' + self.landmarks_frame[idx][0][1]+'.npy')
 
-        rgb_local_image3 = smi.imread(rgb_local_name3)
-        rgb_global_image3 = smi.imread(rgb_global_name3)
-        depth_local_image3 = smi.imread(depth_local_name3)
-        depth_global_image3 = smi.imread(depth_global_name3)
-        normal_local_image3 = smi.imread(normal_local_name3)
-        normal_global_image3 = smi.imread(normal_global_name3)
-        mask_local_image3 = smi.imread(mask_local_name3)
-        mask_global_image3 = smi.imread(mask_global_name3)
+        rgb_negative = os.path.join(self.root_dir, 'images/'+n + '.rgb.npy')
+        normal_negative = os.path.join(self.root_dir, 'images/'+n + '.n.npy')
+        mask_negative = os.path.join(self.root_dir, 'planes/' + self.landmarks_frame[idx][0][2]+'.npy')
 
-        sample = {'rgb_global_image1': rgb_global_image1, 'rgb_global_image2': rgb_global_image2, 'rgb_global_image3': rgb_global_image3,
-                  'depth_global_image1': depth_global_image1, 'depth_global_image2': depth_global_image2, 'depth_global_image3': depth_global_image3,
-                  'normal_global_image1': normal_global_image1, 'normal_global_image2': normal_global_image2, 'normal_global_image3': normal_global_image3,
-                  'mask_global_image1': mask_global_image1, 'mask_global_image2': mask_global_image2, 'mask_global_image3': mask_global_image3,
-                  'rgb_local_image1': rgb_local_image1, 'rgb_local_image2': rgb_local_image2, 'rgb_local_image3': rgb_local_image3,
-                  'depth_local_image1': depth_local_image1, 'depth_local_image2': depth_local_image2, 'depth_local_image3': depth_local_image3,
-                  'normal_local_image1': normal_local_image1, 'normal_local_image2': normal_local_image2, 'normal_local_image3': normal_local_image3,
-                  'mask_local_image1': mask_local_image1, 'mask_local_image2': mask_local_image2, 'mask_local_image3': mask_local_image3}
+
+
+
+        size = (240, 320)
+        # rgb_anchor_image        = cv2.resize(imageio.imread(rgb_anchor), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # normal_anchor_image     = cv2.resize(imageio.imread(normal_anchor), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # mask_anchor_image       = cv2.resize(imageio.imread(mask_anchor), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # rgb_negative_image      = cv2.resize(imageio.imread(rgb_negative), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # normal_negative_image   = cv2.resize(imageio.imread(normal_negative), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # mask_negative_image     = cv2.resize(imageio.imread(mask_negative), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # rgb_positive_image      = cv2.resize(imageio.imread(rgb_positive), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # normal_positive_image   = cv2.resize(imageio.imread(normal_positive), dsize=size, interpolation=cv2.INTER_LINEAR)
+        # mask_positive_image     = cv2.resize(imageio.imread(mask_positive), dsize=size, interpolation=cv2.INTER_LINEAR)
+
+        rgb_anchor_image        = np.load(rgb_anchor)
+        normal_anchor_image     = np.load(normal_anchor)
+        mask_anchor_image       = np.load(mask_anchor)
+        rgb_negative_image      = np.load(rgb_negative)
+        normal_negative_image   = np.load(normal_negative)
+        mask_negative_image     = np.load(mask_negative)
+        rgb_positive_image      = np.load(rgb_positive)
+        normal_positive_image   = np.load(normal_positive)
+        mask_positive_image     = np.load(mask_positive)
+
+        # m = 0.1 * np.stack((mask_anchor_image.astype(np.uint8), np.zeros(size), np.zeros(size)) , axis=-1)
+        # plt.imshow( normal_anchor_image + m.astype(np.int))
+        # plt.show()
+        #
+        # m = 0.1 * np.stack((mask_positive_image.astype(np.uint8), np.zeros(size), np.zeros(size)), axis=-1)
+        # plt.imshow(normal_positive_image + m.astype(np.int))
+        # plt.show()
+        #
+        # m = 0.1 * np.stack((mask_negative_image.astype(np.uint8), np.zeros(size), np.zeros(size)), axis=-1)
+        # plt.imshow(normal_negative_image + m.astype(np.int))
+        # plt.show()
+
+        #plt.imshow(np.ma.array(mask_anchor_image, mask=~mask_anchor_image))
+
+
+        sample = {
+            'rgb_anchor_image': rgb_anchor_image,
+            'normal_anchor_image': normal_anchor_image,
+            'mask_anchor_image': mask_anchor_image,
+            'rgb_negative_image': rgb_negative_image,
+            'normal_negative_image': normal_negative_image,
+            'mask_negative_image': mask_negative_image,
+            'rgb_positive_image': rgb_positive_image,
+            'normal_positive_image': normal_positive_image,
+            'mask_positive_image': mask_positive_image
+        }
 
         if self.transform:
             sample = self.transform(sample)
-        
+
         return sample
 
 
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
+
     def __call__(self, sample):
-        rgb_global_image1, rgb_global_image2, rgb_global_image3, \
-        depth_global_image1, depth_global_image2, depth_global_image3,\
-        normal_global_image1, normal_global_image2, normal_global_image3,\
-        mask_global_image1, mask_global_image2, mask_global_image3, \
-        rgb_local_image1, rgb_local_image2, rgb_local_image3, \
-        depth_local_image1, depth_local_image2, depth_local_image3,\
-        normal_local_image1, normal_local_image2, normal_local_image3,\
-        mask_local_image1, mask_local_image2, mask_local_image3,= \
-        sample['rgb_global_image1'], sample['rgb_global_image2'], sample['rgb_global_image3'], \
-        sample['depth_global_image1'], sample['depth_global_image2'], sample['depth_global_image3'], \
-        sample['normal_global_image1'], sample['normal_global_image2'], sample['normal_global_image3'], \
-        sample['mask_global_image1'], sample['mask_global_image2'], sample['mask_global_image3'], \
-        sample['rgb_local_image1'], sample['rgb_local_image2'], sample['rgb_local_image3'], \
-        sample['depth_local_image1'], sample['depth_local_image2'], sample['depth_local_image3'], \
-        sample['normal_local_image1'], sample['normal_local_image2'], sample['normal_local_image3'], \
-        sample['mask_local_image1'], sample['mask_local_image2'], sample['mask_local_image3']
+        rgb_anchor_image,\
+        normal_anchor_image,\
+        mask_anchor_image,\
+        rgb_negative_image,\
+        normal_negative_image,\
+        mask_negative_image,\
+        rgb_positive_image,\
+        normal_positive_image,\
+        mask_positive_image = \
+            sample['rgb_anchor_image'],\
+            sample['normal_anchor_image'],\
+            sample['mask_anchor_image'],\
+            sample['rgb_negative_image'],\
+            sample['normal_negative_image'],\
+            sample['mask_negative_image'],\
+            sample['rgb_positive_image'],\
+            sample['normal_positive_image'],\
+            sample['mask_positive_image']
+
+
+
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
 
-        rgb_global_image1 = rgb_global_image1.astype(np.float).transpose((2, 0, 1)) - 128
-        rgb_global_image2 = rgb_global_image2.astype(np.float).transpose((2, 0, 1)) - 128
-        rgb_global_image3 = rgb_global_image3.astype(np.float).transpose((2, 0, 1)) - 128
+        rgb_anchor_image = rgb_anchor_image.astype(np.float).transpose((2, 0, 1)) - 128
+        rgb_negative_image = rgb_negative_image.astype(np.float).transpose((2, 0, 1)) - 128
+        rgb_positive_image = rgb_positive_image.astype(np.float).transpose((2, 0, 1)) - 128
 
-        scl = 1. / 4000. * 255.
-        depth_global_image1 = np.multiply(depth_global_image1, scl).astype(np.float) - 128
-        depth_global_image2 = np.multiply(depth_global_image2, scl).astype(np.float) - 128
-        depth_global_image3 = np.multiply(depth_global_image3, scl).astype(np.float) - 128
+        normal_anchor_image = normal_anchor_image.astype(np.float).transpose((2, 0, 1)) - 128
+        normal_negative_image = normal_negative_image.astype(np.float).transpose((2, 0, 1)) - 128
+        normal_positive_image = normal_positive_image.astype(np.float).transpose((2, 0, 1)) - 128
 
-        normal_global_image1 = normal_global_image1.astype(np.float).transpose((2, 0, 1)) - 128
-        normal_global_image2 = normal_global_image2.astype(np.float).transpose((2, 0, 1)) - 128
-        normal_global_image3 = normal_global_image3.astype(np.float).transpose((2, 0, 1)) - 128
+        mask_anchor_image = mask_anchor_image.astype(np.float) - 128
+        mask_negative_image = mask_negative_image.astype(np.float) - 128
+        mask_positive_image = mask_positive_image.astype(np.float) - 128
 
-        mask_global_image1 = mask_global_image1.astype(np.float) - 128
-        mask_global_image2 = mask_global_image2.astype(np.float) - 128
-        mask_global_image3 = mask_global_image3.astype(np.float) - 128
-       
-        rgb_local_image1 = rgb_local_image1.astype(np.float).transpose((2, 0, 1)) - 128
-        rgb_local_image2 = rgb_local_image2.astype(np.float).transpose((2, 0, 1)) - 128
-        rgb_local_image3 = rgb_local_image3.astype(np.float).transpose((2, 0, 1)) - 128
-        
-        scl = 1. / 4000. * 255.
-        depth_local_image1 = np.multiply(depth_local_image1, scl).astype(np.float) - 128
-        depth_local_image2 = np.multiply(depth_local_image2, scl).astype(np.float) - 128
-        depth_local_image3 = np.multiply(depth_local_image3, scl).astype(np.float) - 128
+        return {
+            'rgb_anchor_image': torch.from_numpy(rgb_anchor_image),
+            'normal_anchor_image': torch.from_numpy(normal_anchor_image),
+            'mask_anchor_image': torch.from_numpy(mask_anchor_image),
+            'rgb_negative_image': torch.from_numpy(rgb_negative_image),
+            'normal_negative_image': torch.from_numpy(normal_negative_image),
+            'mask_negative_image': torch.from_numpy(mask_negative_image),
+            'rgb_positive_image': torch.from_numpy(rgb_positive_image),
+            'normal_positive_image': torch.from_numpy(normal_positive_image),
+            'mask_positive_image': torch.from_numpy(mask_positive_image)
+        }
 
-        normal_local_image1 = normal_local_image1.astype(np.float).transpose((2, 0, 1)) - 128
-        normal_local_image2 = normal_local_image2.astype(np.float).transpose((2, 0, 1)) - 128
-        normal_local_image3 = normal_local_image3.astype(np.float).transpose((2, 0, 1)) - 128
-        
-        mask_local_image1 = mask_local_image1.astype(np.float) - 128
-        mask_local_image2 = mask_local_image2.astype(np.float) - 128
-        mask_local_image3 = mask_local_image3.astype(np.float) - 128
-        
-        return {'rgb_global_image1': torch.from_numpy(rgb_global_image1), 'rgb_global_image2': torch.from_numpy(rgb_global_image2), 'rgb_global_image3': torch.from_numpy(rgb_global_image3), 
-                'depth_global_image1': torch.from_numpy(depth_global_image1), 'depth_global_image2': torch.from_numpy(depth_global_image2), 'depth_global_image3': torch.from_numpy(depth_global_image3),
-                'normal_global_image1': torch.from_numpy(normal_global_image1), 'normal_global_image2': torch.from_numpy(normal_global_image2), 'normal_global_image3': torch.from_numpy(normal_global_image3),
-                'mask_global_image1': torch.from_numpy(mask_global_image1), 'mask_global_image2': torch.from_numpy(mask_global_image2), 'mask_global_image3': torch.from_numpy(mask_global_image3),
-                'rgb_local_image1': torch.from_numpy(rgb_local_image1), 'rgb_local_image2': torch.from_numpy(rgb_local_image2), 'rgb_local_image3': torch.from_numpy(rgb_local_image3), 
-                'depth_local_image1': torch.from_numpy(depth_local_image1), 'depth_local_image2': torch.from_numpy(depth_local_image2), 'depth_local_image3': torch.from_numpy(depth_local_image3),
-                'normal_local_image1': torch.from_numpy(normal_local_image1), 'normal_local_image2': torch.from_numpy(normal_local_image2), 'normal_local_image3': torch.from_numpy(normal_local_image3),
-                'mask_local_image1': torch.from_numpy(mask_local_image1), 'mask_local_image2': torch.from_numpy(mask_local_image2), 'mask_local_image3': torch.from_numpy(mask_local_image3)}
